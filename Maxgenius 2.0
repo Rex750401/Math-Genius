@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>直式位值練習場 - 順向邏輯版</title>
+    <style>
+        :root {
+            --bg-color: #FFF9F0;
+            --primary-pink: #FF8AB4;
+            --secondary-blue: #4A90E2;
+            --carry-red: #FF4757;
+        }
+
+        body {
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-color);
+            display: flex; flex-direction: column; align-items: center; padding: 20px;
+        }
+
+        .control-panel {
+            background: white; padding: 20px; border-radius: 20px; border: 3px solid #FFD93D;
+            text-align: center; margin-bottom: 25px; width: 100%; max-width: 500px;
+        }
+
+        .quiz-item {
+            background: white; border-radius: 25px; padding: 30px; margin-bottom: 30px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05); width: 100%; max-width: 600px;
+        }
+
+        .math-container {
+            display: flex; justify-content: center; align-items: flex-end;
+            font-size: 3rem; font-weight: bold; gap: 10px; height: 120px;
+        }
+
+        .digit-group { position: relative; display: inline-flex; letter-spacing: 5px; }
+
+        .mark {
+            position: absolute; font-size: 1.2rem; font-weight: 900; top: -45px;
+            display: none; width: 30px; text-align: center;
+        }
+
+        .carry-ten { left: -15px; color: var(--carry-red); }
+        .carry-hundred { left: -45px; color: var(--carry-red); }
+        
+        .borrow-mark {
+            top: -45px; color: #444; font-size: 1.1rem;
+            background: #FFD93D; border-radius: 4px; padding: 0 4px;
+        }
+        .borrow-ten { left: -15px; }
+
+        .strikethrough { text-decoration: line-through red 4px; color: #bbb; }
+
+        /* 修改後的答案格樣式 */
+        .answer-zone {
+            display: flex;
+            flex-direction: row-reverse; /* 關鍵：讓 DOM 順序與視覺順序相反，方便 Tab 鍵邏輯 */
+            gap: 5px;
+            align-items: center;
+        }
+
+        .digit-input {
+            width: 45px; height: 60px; font-size: 2.2rem;
+            border: 3px solid #eee; border-radius: 8px; text-align: center;
+            color: var(--secondary-blue); font-weight: bold;
+        }
+
+        .digit-input:focus { border-color: var(--primary-pink); outline: none; background: #FFF0F5; }
+
+        .btn-group { display: flex; gap: 10px; margin: 20px 0; justify-content: center; }
+
+        .btn-tool {
+            padding: 10px 20px; border-radius: 10px; border: none;
+            color: white; font-weight: bold; cursor: pointer; font-size: 1rem;
+        }
+
+        .bg-add { background-color: var(--carry-red); }
+        .bg-sub { background-color: #57606f; }
+
+        .ten-frame-group { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+        .ten-frame {
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
+            padding: 8px; background: #f0faff; border: 2px solid #bcd; border-radius: 8px;
+        }
+        .dot { width: 28px; height: 28px; background: #ddd; border-radius: 50%; cursor: pointer; }
+        .dot.active { background: var(--primary-pink); }
+    </style>
+</head>
+<body>
+
+    <h1 style="color: #FF6B6B;">✏️ 數學小天才練習場</h1>
+
+    <div class="control-panel">
+        <div style="margin-bottom:15px;">
+            <label><input type="radio" name="mode" value="add" checked> 加法練習</label>
+            <label><input type="radio" name="mode" value="sub"> 減法練習</label>
+            <label><input type="radio" name="mode" value="mix"> 隨機混合</label>
+        </div>
+        <button class="btn-tool" style="background: #FF8AB4; width: 200px; font-size: 1.2rem;" onclick="generateQuiz()">更換題目</button>
+    </div>
+
+    <div id="quiz-container"></div>
+
+    <script>
+        function toggleMark(btn, className) {
+            const item = btn.closest('.quiz-item');
+            const mark = item.querySelector('.' + className);
+            const isVisible = mark.style.display === 'block';
+            mark.style.display = isVisible ? 'none' : 'block';
+
+            if (className === 'borrow-ten') {
+                const numText = item.querySelector('.num-text');
+                const leftDots = item.querySelectorAll('.ten-frame')[0].querySelectorAll('.dot');
+                if (!isVisible) {
+                    numText.classList.add('strikethrough');
+                    leftDots.forEach(d => d.classList.add('active'));
+                } else {
+                    numText.classList.remove('strikethrough');
+                    leftDots.forEach(d => d.classList.remove('active'));
+                }
+            }
+        }
+
+        // 核心：從右往左的自動跳格邏輯
+        function moveFocus(current, nextId) {
+            if (current.value.length >= 1) {
+                const nextInput = current.closest('.quiz-item').querySelector('.' + nextId);
+                if (nextInput) nextInput.focus();
+            }
+        }
+
+        function generateQuiz() {
+            const container = document.getElementById('quiz-container');
+            const mode = document.querySelector('input[name="mode"]:checked').value;
+            container.innerHTML = '';
+
+            for (let i = 0; i < 5; i++) {
+                let n1 = Math.floor(Math.random() * 80) + 11;
+                let n2 = Math.floor(Math.random() * 80) + 11;
+                let op = (mode === 'mix') ? (Math.random() > 0.5 ? 'add' : 'sub') : mode;
+                if (op === 'sub' && n1 < n2) [n1, n2] = [n2, n1];
+
+                const quizItem = document.createElement('div');
+                quizItem.className = 'quiz-item';
+                
+                const buttons = op === 'add' ? `
+                    <button class="btn-tool bg-add" onclick="toggleMark(this, 'carry-ten')">十位進位 (+1)</button>
+                    <button class="btn-tool bg-add" onclick="toggleMark(this, 'carry-hundred')">百位進位 (+1)</button>
+                ` : `
+                    <button class="btn-tool bg-sub" onclick="toggleMark(this, 'borrow-ten')">十位借位</button>
+                `;
+
+                quizItem.innerHTML = `
+                    <div class="math-container">
+                        <div class="digit-group">
+                            <div class="mark carry-hundred">+1</div>
+                            <div class="mark carry-ten">+1</div>
+                            <div class="mark borrow-mark borrow-ten">${Math.floor((n1%100)/10)-1}</div>
+                            <span class="num-text">${n1}</span>
+                        </div>
+                        <span>${op === 'add' ? '+' : '-'}</span>
+                        <span>${n2}</span>
+                        <span>=</span>
+                        <div class="answer-zone">
+                            <input type="number" class="digit-input unit" oninput="moveFocus(this, 'tens')" placeholder="個">
+                            <input type="number" class="digit-input tens" oninput="moveFocus(this, 'hundreds')" placeholder="十">
+                            <input type="number" class="digit-input hundreds" placeholder="百">
+                        </div>
+                    </div>
+                    
+                    <div class="btn-group">${buttons}</div>
+
+                    <div class="ten-frame-group">
+                        <div class="ten-frame">${Array(10).fill('<div class="dot" onclick="this.classList.toggle(\'active\')"></div>').join('')}</div>
+                        <div class="ten-frame">${Array(10).fill('<div class="dot" onclick="this.classList.toggle(\'active\')"></div>').join('')}</div>
+                    </div>
+                    <p style="text-align:right; font-size:0.8rem; color:#999; cursor:pointer;" onclick="resetItem(this)">清除此題紀錄</p>
+                `;
+                container.appendChild(quizItem);
+            }
+        }
+
+        function resetItem(btn) {
+            const item = btn.closest('.quiz-item');
+            item.querySelectorAll('.mark').forEach(m => m.style.display = 'none');
+            item.querySelector('.num-text').classList.remove('strikethrough');
+            item.querySelectorAll('.dot').forEach(d => d.classList.remove('active'));
+            item.querySelectorAll('.digit-input').forEach(input => input.value = '');
+        }
+
+        generateQuiz();
+    </script>
+</body>
+</html>

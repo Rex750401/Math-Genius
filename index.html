@@ -2,20 +2,33 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>直式位值練習場 - 順向邏輯版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="數學天才">
+    
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/180/calculator.png">
+    
+    <title>直式位值練習場 - App版</title>
     <style>
         :root {
             --bg-color: #FFF9F0;
             --primary-pink: #FF8AB4;
             --secondary-blue: #4A90E2;
             --carry-red: #FF4757;
+            /* 防止長按選取文字影響操作 */
+            -webkit-user-select: none; 
+            user-select: none;
         }
 
         body {
             font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
             background-color: var(--bg-color);
             display: flex; flex-direction: column; align-items: center; padding: 20px;
+            /* 避免手機橡皮筋回彈效果 */
+            overflow-x: hidden;
+            touch-action: manipulation;
         }
 
         .control-panel {
@@ -51,10 +64,9 @@
 
         .strikethrough { text-decoration: line-through red 4px; color: #bbb; }
 
-        /* 修改後的答案格樣式 */
         .answer-zone {
             display: flex;
-            flex-direction: row-reverse; /* 關鍵：讓 DOM 順序與視覺順序相反，方便 Tab 鍵邏輯 */
+            flex-direction: row-reverse; 
             gap: 5px;
             align-items: center;
         }
@@ -63,6 +75,7 @@
             width: 45px; height: 60px; font-size: 2.2rem;
             border: 3px solid #eee; border-radius: 8px; text-align: center;
             color: var(--secondary-blue); font-weight: bold;
+            -webkit-appearance: none; /* 移除手機預設陰影 */
         }
 
         .digit-input:focus { border-color: var(--primary-pink); outline: none; background: #FFF0F5; }
@@ -72,6 +85,7 @@
         .btn-tool {
             padding: 10px 20px; border-radius: 10px; border: none;
             color: white; font-weight: bold; cursor: pointer; font-size: 1rem;
+            touch-action: manipulation;
         }
 
         .bg-add { background-color: var(--carry-red); }
@@ -88,7 +102,7 @@
 </head>
 <body>
 
-    <h1 style="color: #FF6B6B;">✏️ 數學小天才練習場</h1>
+    <h1 style="color: #FF6B6B;">✏️數學小天才✏️</h1>
 
     <div class="control-panel">
         <div style="margin-bottom:15px;">
@@ -121,7 +135,6 @@
             }
         }
 
-        // 核心：從右往左的自動跳格邏輯
         function moveFocus(current, nextId) {
             if (current.value.length >= 1) {
                 const nextInput = current.closest('.quiz-item').querySelector('.' + nextId);
@@ -162,14 +175,12 @@
                         <span>${n2}</span>
                         <span>=</span>
                         <div class="answer-zone">
-                            <input type="number" class="digit-input unit" oninput="moveFocus(this, 'tens')" placeholder="個">
-                            <input type="number" class="digit-input tens" oninput="moveFocus(this, 'hundreds')" placeholder="十">
-                            <input type="number" class="digit-input hundreds" placeholder="百">
+                            <input type="number" pattern="[0-9]*" inputmode="numeric" class="digit-input unit" oninput="moveFocus(this, 'tens')" placeholder="個">
+                            <input type="number" pattern="[0-9]*" inputmode="numeric" class="digit-input tens" oninput="moveFocus(this, 'hundreds')" placeholder="十">
+                            <input type="number" pattern="[0-9]*" inputmode="numeric" class="digit-input hundreds" placeholder="百">
                         </div>
                     </div>
-                    
                     <div class="btn-group">${buttons}</div>
-
                     <div class="ten-frame-group">
                         <div class="ten-frame">${Array(10).fill('<div class="dot" onclick="this.classList.toggle(\'active\')"></div>').join('')}</div>
                         <div class="ten-frame">${Array(10).fill('<div class="dot" onclick="this.classList.toggle(\'active\')"></div>').join('')}</div>

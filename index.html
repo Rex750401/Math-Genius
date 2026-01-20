@@ -3,222 +3,297 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="數學天才">
-    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/180/calculator.png">
-    
-    <title>直式位值練習場 - 完美對齊版</title>
+    <title>數學小天才 - 直式位值練習場</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root {
             --bg-color: #FFF9F0;
             --primary-pink: #FF8AB4;
             --secondary-blue: #4A90E2;
             --carry-red: #FF4757;
-            -webkit-user-select: none; 
-            user-select: none;
+            --borrow-blue: #3498db;
+            --thousand-purple: #9b59b6;
+            --warn-orange: #FFEAA7;
         }
 
         body {
             font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
             background-color: var(--bg-color);
             display: flex; flex-direction: column; align-items: center; padding: 15px;
-            overflow-x: hidden;
-            touch-action: manipulation;
+            overflow-x: hidden; touch-action: manipulation;
         }
 
         .control-panel {
             background: white; padding: 15px; border-radius: 20px; border: 3px solid #FFD93D;
-            text-align: center; margin-bottom: 20px; width: 100%; max-width: 500px;
+            text-align: center; margin-bottom: 20px; width: 100%; max-width: 550px;
         }
 
+        .level-selector, .mode-selector { margin-bottom: 12px; }
+        .level-selector label, .mode-selector label { margin: 0 8px; font-weight: bold; color: #555; font-size: 1rem; }
+
         .quiz-item {
-            background: white; border-radius: 25px; padding: 20px; margin-bottom: 25px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.05); width: 100%; max-width: 600px;
+            background: white; border-radius: 25px; padding: 25px; margin-bottom: 25px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05); width: 100%; max-width: 650px;
+            position: relative;
         }
 
         .math-container {
             display: flex; justify-content: center; align-items: flex-end;
-            font-size: 3rem; font-weight: bold; gap: 8px; height: 90px;
-            margin-bottom: 10px;
+            font-size: 2.5rem; font-weight: bold; gap: 15px; height: 140px;
+            margin-bottom: 20px;
         }
 
-        .digit-group { 
-            position: relative; 
-            display: inline-flex; 
-            letter-spacing: 2px;
-        }
+        .digit-group { display: flex; align-items: flex-end; }
+        .digit-box { position: relative; width: 45px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-height: 100px;}
 
-        /* 標記樣式：修正位置使其不再偏右 */
-        .mark {
-            position: absolute; font-size: 1.1rem; font-weight: 900; 
-            top: -25px; 
-            display: none; width: 30px; text-align: center;
-        }
+        .borrow-remain { position: absolute; top: -65px; color: #444; font-size: 1.1rem; background: #FFD93D; border-radius: 4px; padding: 0 5px; display: none; z-index: 3; min-width: 22px; text-align: center; }
+        .upper-mark { position: absolute; top: -38px; font-size: 1.1rem; font-weight: bold; display: none; z-index: 2; width: 100%; text-align: center; }
+        .val-borrow { color: var(--borrow-blue); }
+        .val-carry { color: var(--carry-red); font-weight: 900; }
 
-        /* 調整 left 數值，讓標記準確對齊十位與百位 */
-        .carry-ten { left: -5px; color: var(--carry-red); }
-        .carry-hundred { left: -35px; color: var(--carry-red); }
-        
-        .borrow-mark {
-            top: -25px; color: #444; font-size: 1rem;
-            background: #FFD93D; border-radius: 4px; padding: 0 2px;
-        }
-        .borrow-ten { left: -5px; }
+        .main-num-char { position: relative; transition: color 0.2s; display: inline-block; width: 100%; text-align: center; }
+        .strike { color: #bbb !important; }
+        .strike::after { content: "/"; position: absolute; left: 20%; top: -5px; color: red; font-size: 3rem; transform: rotate(10deg); }
 
-        /* 十位數字單獨槓掉效果 */
-        .strike-ten {
-            position: relative;
-            color: #bbb;
-        }
-        .strike-ten::after {
-            content: "/";
-            position: absolute;
-            left: 4px;
-            top: 0;
-            color: red;
-            font-weight: bold;
-            transform: scale(1.2);
-        }
+        .operator { color: #888; padding: 0 5px; }
 
-        .answer-zone {
-            display: flex;
-            flex-direction: row-reverse; 
-            gap: 4px;
-            align-items: center;
+        .answer-row {
+            display: flex; justify-content: center; align-items: center;
+            gap: 15px; margin-top: 10px; border-top: 2px dashed #eee; padding-top: 20px;
         }
+        .equals-sign { font-size: 2.2rem; color: #888; font-weight: bold; }
+        .answer-zone { display: flex; flex-direction: row-reverse; gap: 8px; align-items: center; }
 
         .digit-input {
-            width: 42px; height: 55px; font-size: 2rem;
-            border: 3px solid #eee; border-radius: 8px; text-align: center;
+            width: 45px; height: 55px; font-size: 2rem;
+            border: 3px solid #eee; border-radius: 10px; text-align: center;
             color: var(--secondary-blue); font-weight: bold;
         }
-
         .digit-input:focus { border-color: var(--primary-pink); outline: none; background: #FFF0F5; }
+        .digit-input.wrong { background-color: var(--warn-orange); border-color: #FDCB6E; }
 
-        .btn-group { display: flex; gap: 8px; margin: 15px 0; justify-content: center; }
-
-        .btn-tool {
-            padding: 8px 15px; border-radius: 10px; border: none;
-            color: white; font-weight: bold; cursor: pointer; font-size: 0.9rem;
-        }
-
+        .btn-group { display: flex; gap: 8px; margin: 20px 0; justify-content: center; flex-wrap: wrap; }
+        .btn-tool { padding: 8px 14px; border-radius: 12px; border: none; color: white; font-weight: bold; cursor: pointer; font-size: 0.9rem; }
         .bg-add { background-color: var(--carry-red); }
         .bg-sub { background-color: #57606f; }
 
-        .ten-frame-group { display: flex; gap: 8px; justify-content: center; margin-top: 15px; }
-        .ten-frame {
-            display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
-            padding: 6px; background: #f0faff; border: 2px solid #bcd; border-radius: 8px;
-        }
-        .dot { width: 26px; height: 26px; background: #ddd; border-radius: 50%; cursor: pointer; }
-        .dot.active { background: var(--primary-pink); }
+        .ten-frame-group { display: flex; gap: 12px; justify-content: center; margin-top: 15px; min-height: 40px; }
+        .ten-frame { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 6px; background: #f0faff; border: 2px solid #bcd; border-radius: 8px; }
+        .dot { width: 22px; height: 22px; background: #ddd; border-radius: 50%; cursor: pointer; transition: 0.2s; }
+        .dot.active { background: var(--primary-pink); transform: scale(1.1); }
+        
+        .check-panel { margin-top: 20px; text-align: center; width: 100%; max-width: 650px; padding-bottom: 60px; }
+        .btn-check { background: #2ED573; color: white; font-size: 1.2rem; padding: 15px 60px; border-radius: 50px; border: none; cursor: pointer; box-shadow: 0 5px 0 #26af5f; transition: all 0.1s; }
+        .btn-check:active { transform: translateY(3px); box-shadow: 0 2px 0 #26af5f; }
+        .feedback-msg { margin-top: 20px; font-weight: bold; font-size: 1.2rem; min-height: 1.5rem; }
+
+        .reset-link { text-align:right; font-size:0.75rem; color:#ccc; cursor:pointer; margin-top:15px; }
     </style>
 </head>
 <body>
 
-    <h1 style="color: #FF6B6B; font-size: 1.5rem; margin: 10px 0;">✏️數學小天才✏️</h1>
+    <h1 style="color: #FF6B6B; font-size: 1.8rem; margin: 15px 0;">✨ 數學小天才 ✨</h1>
 
     <div class="control-panel">
-        <div style="margin-bottom:10px;">
-            <label><input type="radio" name="mode" value="add" checked> 加法</label>
-            <label><input type="radio" name="mode" value="sub"> 減法</label>
-            <label><input type="radio" name="mode" value="mix"> 混合</label>
+        <div class="level-selector">
+            <label><input type="radio" name="level" value="easy"> 初階</label>
+            <label><input type="radio" name="level" value="mid" checked> 中階</label>
+            <label><input type="radio" name="level" value="hard"> 高階</label>
         </div>
-        <button class="btn-tool" style="background: #FF8AB4; width: 160px;" onclick="generateQuiz()">換題目</button>
+        <div class="mode-selector">
+            <label><input type="radio" name="mode" value="add"> 加法</label>
+            <label><input type="radio" name="mode" value="sub"> 減法</label>
+            <label><input type="radio" name="mode" value="mix" checked> 混合</label>
+        </div>
+        <button class="btn-tool" style="background: #FF8AB4; width: 180px; font-size: 1.1rem;" onclick="generateQuiz()">換一組題目</button>
     </div>
 
     <div id="quiz-container"></div>
 
-    <script>
-        function toggleMark(btn, className) {
-            const item = btn.closest('.quiz-item');
-            const mark = item.querySelector('.' + className);
-            const isVisible = mark.style.display === 'block';
-            mark.style.display = isVisible ? 'none' : 'block';
+    <div class="check-panel">
+        <button class="btn-check" onclick="checkAllAnswers()">寫好了，對答案！</button>
+        <div id="overall-feedback" class="feedback-msg"></div>
+    </div>
 
-            if (className === 'borrow-ten') {
-                const tenDigitSpan = item.querySelector('.ten-digit');
-                const leftDots = item.querySelectorAll('.ten-frame')[0].querySelectorAll('.dot');
-                if (!isVisible) {
-                    tenDigitSpan.classList.add('strike-ten'); 
-                    leftDots.forEach(d => d.classList.add('active'));
+    <script>
+        let currentAnswers = [];
+
+        function toggleMark(btn, type, posIdx) {
+            const item = btn.closest('.quiz-item');
+            const firstGroup = item.querySelector('.digit-group-n1');
+            let digitBoxes = firstGroup.querySelectorAll('.digit-box');
+            
+            while (digitBoxes.length <= posIdx) {
+                const newBox = document.createElement('div');
+                newBox.className = 'digit-box';
+                newBox.innerHTML = '<div class="borrow-remain"></div><div class="upper-mark"></div><span class="main-num-char" style="visibility:hidden">0</span>';
+                firstGroup.insertBefore(newBox, firstGroup.firstChild);
+                digitBoxes = firstGroup.querySelectorAll('.digit-box');
+            }
+
+            const targetBox = digitBoxes[digitBoxes.length - 1 - posIdx];
+            if (!targetBox) return;
+
+            const mark = targetBox.querySelector('.upper-mark');
+            if (type === 'carry') {
+                mark.innerText = '+1';
+                mark.className = 'upper-mark val-carry';
+                mark.style.display = (mark.style.display === 'block') ? 'none' : 'block';
+            } else if (type === 'borrow') {
+                const remainBox = targetBox.querySelector('.borrow-remain');
+                const mainChar = targetBox.querySelector('.main-num-char');
+                const receiverBox = digitBoxes[digitBoxes.length - posIdx];
+                const receiverMark = receiverBox ? receiverBox.querySelector('.upper-mark') : null;
+
+                if (!mainChar.classList.contains('strike')) {
+                    mainChar.classList.add('strike');
+                    remainBox.style.display = 'block';
+                    let val = parseInt(mainChar.innerText) - 1;
+                    remainBox.innerText = val < 0 ? 9 : val;
+                    if(receiverMark) {
+                        receiverMark.style.display = 'block';
+                        receiverMark.innerText = '10';
+                        receiverMark.className = 'upper-mark val-borrow';
+                        const firstTenFrame = item.querySelector('.ten-frame');
+                        if (firstTenFrame) firstTenFrame.querySelectorAll('.dot').forEach(dot => dot.classList.add('active'));
+                    }
                 } else {
-                    tenDigitSpan.classList.remove('strike-ten');
-                    leftDots.forEach(d => d.classList.remove('active'));
+                    mainChar.classList.remove('strike');
+                    remainBox.style.display = 'none';
+                    if(receiverMark) receiverMark.style.display = 'none';
                 }
             }
         }
 
-        function moveFocus(current, nextId) {
+        function moveFocus(current, nextClass) {
             if (current.value.length >= 1) {
-                const nextInput = current.closest('.quiz-item').querySelector('.' + nextId);
+                const nextInput = current.closest('.quiz-item').querySelector('.' + nextClass);
                 if (nextInput) nextInput.focus();
             }
+        }
+
+        function getDigitHtml(num, hasMarkers = false) {
+            return num.toString().split('').map(d => `
+                <div class="digit-box">
+                    ${hasMarkers ? '<div class="borrow-remain"></div><div class="upper-mark"></div>' : ''}
+                    <span class="main-num-char">${d}</span>
+                </div>
+            `).join('');
+        }
+
+        function createInput(cls, multiplier, nextCls, placeholder) {
+            // 加入 inputmode="numeric" 讓行動裝置顯示數字鍵盤
+            return `<input type="number" inputmode="numeric" pattern="[0-9]*" class="digit-input ${cls}" data-val="${multiplier}" oninput="moveFocus(this, '${nextCls}')" placeholder="${placeholder}">`;
         }
 
         function generateQuiz() {
             const container = document.getElementById('quiz-container');
             const mode = document.querySelector('input[name="mode"]:checked').value;
+            const level = document.querySelector('input[name="level"]:checked').value;
+            
             container.innerHTML = '';
+            currentAnswers = [];
+            document.getElementById('overall-feedback').innerText = '';
 
             for (let i = 0; i < 5; i++) {
-                let n1 = Math.floor(Math.random() * 80) + 11;
-                let n2 = Math.floor(Math.random() * 80) + 11;
+                let n1, n2;
+                if (level === 'easy') {
+                    n1 = Math.floor(Math.random() * 9) + 1;
+                    n2 = Math.floor(Math.random() * 9) + 1;
+                } else if (level === 'mid') {
+                    n1 = Math.floor(Math.random() * 89) + 10;
+                    n2 = Math.floor(Math.random() * 89) + 10;
+                } else {
+                    n1 = Math.floor(Math.random() * 900) + 100;
+                    n2 = Math.floor(Math.random() * 900) + 100;
+                }
+
                 let op = (mode === 'mix') ? (Math.random() > 0.5 ? 'add' : 'sub') : mode;
                 if (op === 'sub' && n1 < n2) [n1, n2] = [n2, n1];
-
-                const n1Str = n1.toString().padStart(2, '0');
-                const tenD = n1Str[0];
-                const unitD = n1Str[1];
+                currentAnswers.push(op === 'add' ? n1 + n2 : n1 - n2);
 
                 const quizItem = document.createElement('div');
                 quizItem.className = 'quiz-item';
                 
-                const buttons = op === 'add' ? `
-                    <button class="btn-tool bg-add" onclick="toggleMark(this, 'carry-ten')">十位進位</button>
-                    <button class="btn-tool bg-add" onclick="toggleMark(this, 'carry-hundred')">百位進位</button>
-                ` : `
-                    <button class="btn-tool bg-sub" onclick="toggleMark(this, 'borrow-ten')">十位借位</button>
-                `;
+                let buttons = '';
+                if (op === 'add') {
+                    buttons += `<button class="btn-tool bg-add" onclick="toggleMark(this, 'carry', 1)">進位到十</button>`;
+                    if (level === 'mid' || level === 'hard') buttons += `<button class="btn-tool bg-add" onclick="toggleMark(this, 'carry', 2)">進位到百</button>`;
+                    if (level === 'hard') buttons += `<button class="btn-tool bg-add" onclick="toggleMark(this, 'carry', 3)">進位到千</button>`;
+                } else {
+                    buttons += `<button class="btn-tool bg-sub" onclick="toggleMark(this, 'borrow', 1)">借十位</button>`;
+                    if (level === 'mid' || level === 'hard') buttons += `<button class="btn-tool bg-sub" onclick="toggleMark(this, 'borrow', 2)">借百位</button>`;
+                }
+
+                let inputsHtml = createInput('unit', 1, 'tens', '個');
+                if (level !== 'easy' || currentAnswers[i] >= 10) inputsHtml += createInput('tens', 10, 'hundreds', '十');
+                if (level === 'mid') inputsHtml += createInput('hundreds', 100, '', '百');
+                if (level === 'hard') {
+                    inputsHtml += createInput('hundreds', 100, 'thousands', '百');
+                    inputsHtml += createInput('thousands', 1000, '', '千');
+                }
+
+                let framesHtml = (level === 'easy' && op === 'sub') ? 
+                    `<div class="ten-frame">${Array(10).fill('<div class="dot" onclick="this.classList.toggle(\'active\')"></div>').join('')}</div>` : 
+                    (level !== 'hard' ? `<div class="ten-frame">${Array(10).fill('<div class="dot" onclick="this.classList.toggle(\'active\')"></div>').join('')}</div><div class="ten-frame">${Array(10).fill('<div class="dot" onclick="this.classList.toggle(\'active\')"></div>').join('')}</div>` : '<span style="color:#888; font-size:0.9rem;">⭐ 挑戰三位數以上進退位</span>');
 
                 quizItem.innerHTML = `
                     <div class="math-container">
-                        <div class="digit-group">
-                            <div class="mark carry-hundred">+1</div>
-                            <div class="mark carry-ten">+1</div>
-                            <div class="mark borrow-mark borrow-ten">${parseInt(tenD)-1}</div>
-                            <span class="ten-digit">${tenD}</span><span class="unit-digit">${unitD}</span>
-                        </div>
-                        <span>${op === 'add' ? '+' : '-'}</span>
-                        <span>${n2}</span>
-                        <span>=</span>
-                        <div class="answer-zone">
-                            <input type="number" pattern="[0-9]*" inputmode="numeric" class="digit-input unit" oninput="moveFocus(this, 'tens')" placeholder="個">
-                            <input type="number" pattern="[0-9]*" inputmode="numeric" class="digit-input tens" oninput="moveFocus(this, 'hundreds')" placeholder="十">
-                            <input type="number" pattern="[0-9]*" inputmode="numeric" class="digit-input hundreds" placeholder="百">
-                        </div>
+                        <div class="digit-group digit-group-n1">${getDigitHtml(n1, true)}</div>
+                        <span class="operator">${op === 'add' ? '+' : '-'}</span>
+                        <div class="digit-group digit-group-n2">${getDigitHtml(n2, false)}</div>
+                    </div>
+                    <div class="answer-row">
+                        <span class="equals-sign">=</span>
+                        <div class="answer-zone">${inputsHtml}</div>
                     </div>
                     <div class="btn-group">${buttons}</div>
-                    <div class="ten-frame-group">
-                        <div class="ten-frame">${Array(10).fill('<div class="dot" onclick="this.classList.toggle(\'active\')"></div>').join('')}</div>
-                        <div class="ten-frame">${Array(10).fill('<div class="dot" onclick="this.classList.toggle(\'active\')"></div>').join('')}</div>
-                    </div>
-                    <p style="text-align:right; font-size:0.75rem; color:#ccc; cursor:pointer;" onclick="resetItem(this)">重置</p>
+                    <div class="ten-frame-group">${framesHtml}</div>
+                    <p class="reset-link" onclick="resetItem(this)">重置題目狀態</p>
                 `;
                 container.appendChild(quizItem);
             }
         }
 
-        function resetItem(btn) {
-            const item = btn.closest('.quiz-item');
-            item.querySelectorAll('.mark').forEach(m => m.style.display = 'none');
-            item.querySelector('.ten-digit').classList.remove('strike-ten');
-            item.querySelectorAll('.dot').forEach(d => d.classList.remove('active'));
-            item.querySelectorAll('.digit-input').forEach(input => input.value = '');
+        function checkAllAnswers() {
+            const items = document.querySelectorAll('.quiz-item');
+            let allCorrect = true;
+            let feedback = document.getElementById('overall-feedback');
+
+            items.forEach((item, index) => {
+                const inputs = item.querySelectorAll('.digit-input');
+                let userTotal = 0;
+                inputs.forEach(input => {
+                    userTotal += (parseInt(input.value) || 0) * parseInt(input.dataset.val);
+                });
+
+                if (userTotal === currentAnswers[index]) {
+                    inputs.forEach(input => input.classList.remove('wrong'));
+                } else {
+                    allCorrect = false;
+                    inputs.forEach(input => input.classList.add('wrong'));
+                }
+            });
+
+            if (allCorrect) {
+                feedback.style.color = '#2ED573';
+                feedback.innerText = '太棒了！全部都算對了喔！✨';
+                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#FF8AB4', '#FFD93D', '#4A90E2', '#2ED573'] });
+            } else {
+                feedback.style.color = '#FF9F43';
+                feedback.innerText = '再檢查一下！';
+            }
         }
 
-        generateQuiz();
+        function resetItem(btn) {
+            const item = btn.closest('.quiz-item');
+            item.querySelectorAll('.borrow-remain, .upper-mark').forEach(el => el.style.display = 'none');
+            item.querySelectorAll('.main-num-char').forEach(el => el.classList.remove('strike'));
+            item.querySelectorAll('.dot').forEach(el => el.classList.remove('active'));
+            item.querySelectorAll('.digit-input').forEach(el => { el.value = ''; el.classList.remove('wrong'); });
+        }
+
+        window.onload = generateQuiz;
     </script>
 </body>
 </html>
